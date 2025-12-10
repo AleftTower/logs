@@ -1,0 +1,105 @@
+-- =================================================================
+-- |              سكربت سجل الدردشة (Log Chat Script)             |
+-- |         يجب وضع هذا السكربت في StarterPlayerScripts          |
+-- =================================================================
+
+-- الخدمات الأساسية
+local Players = game:GetService("Players")
+local ChatService = game:GetService("Chat")
+local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+
+-- إعدادات السجل
+local ChatLog = {}
+local MaxMessages = 75 --  الحد الأقصى للرسائل المخزنة (تم التعديل إلى 75) 
+
+-- متغيرات واجهة المستخدم (GUI)
+local ScreenGui = Player.PlayerGui:FindFirstChild("ChatLogGui") -- تأكد من أن هذا هو اسم الـ ScreenGui الخاص بك
+local LogFrame = nil
+local LogTextBox = nil
+
+-- البحث عن عناصر واجهة المستخدم بمجرد تحميل واجهة المستخدم
+local function setupGUIReferences()
+    if ScreenGui and ScreenGui:FindFirstChild("LogFrame") then
+        LogFrame = ScreenGui:FindFirstChild("LogFrame")
+        LogTextBox = LogFrame:FindFirstChild("LogTextBox")
+        
+        -- إخفاء القائمة في البداية
+        if LogFrame then
+            LogFrame.Visible = false
+        end
+    end
+end
+
+-- =================================================================
+-- |                    دوال معالجة السجل                         |
+-- =================================================================
+
+-- دالة تحديث محتوى مربع النص
+local function UpdateLogUI()
+    if LogTextBox and LogFrame.Visible then
+        local displayString = table.concat(ChatLog, "\n")
+        LogTextBox.Text = displayString
+    end
+end
+
+-- دالة لمعالجة الرسائل
+local function OnMessageReceived(message, speaker)
+    local senderPlayer = Players:GetPlayerByUserId(speaker.UserId)
+    
+    if senderPlayer then
+        -- تنسيق الرسالة
+        local logEntry = string.format("[%s] %s: %s", os.date("%H:%M:%S"), senderPlayer.Name, message)
+        
+        -- إضافة الرسالة إلى أعلى السجل
+        table.insert(ChatLog, 1, logEntry)
+        
+        -- إزالة أقدم رسالة إذا تجاوزنا الحد الأقصى (75)
+        if #ChatLog > MaxMessages then
+            table.remove(ChatLog, #ChatLog)
+        end
+        
+        -- تحديث واجهة المستخدم إذا كانت ظاهرة
+        UpdateLogUI()
+    end
+end
+
+-- ربط الدالة بحدث إرسال الرسائل (للدردشة العامة)
+ChatService.ChanneledMessage:Connect(function(channel, message, speaker)
+    -- يمكنك هنا إضافة منطق لتصفية القنوات (القناة العامة هي عادةً "All")
+    OnMessageReceived(message, speaker)
+end)
+
+-- يمكنك إضافة ربط لـ PrivateMessage إذا كنت تملك صلاحية الوصول إليه (قد يتطلب هذا سكربت خادم)
+-- PrivateMessage:Connect(function(message, sender, recipient) ... end)
+
+-- =================================================================
+-- |                    تفعيل زر L والتحكم بـ GUI                 |
+-- =================================================================
+
+-- ربط الإدخال لتفعيل وإخفاء القائمة
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    -- نتجاهل الإدخال إذا كان اللاعب يكتب حاليًا (لتجنب فتح القائمة أثناء الكتابة)
+    if gameProcessedEvent then return end
+    
+    if input.KeyCode == Enum.KeyCode.L and LogFrame then
+        LogFrame.Visible = not LogFrame.Visible -- تبديل حالة الظهور
+        
+        -- إذا أصبحت القائمة ظاهرة، قم بتحديث المحتوى فوراً
+        if LogFrame.Visible then
+            UpdateLogUI()
+        end
+    end
+end)
+
+-- انتظر تحميل واجهة المستخدم ثم قم بتعيين المراجع
+if ScreenGui then
+    -- يتم استدعاء هذا عند تغيير ملكية الأب (مثل عند تحميل الـ ScreenGui)
+    ScreenGui.Parent:OnceChanged("Parent", setupGUIReferences)
+else
+    -- في حالة عدم وجود ScreenGui، حاول البحث مرة أخرى بعد قليل
+    -- (يجب أن تقوم بإنشاء ScreenGui يدوياً وتسميته ChatLogGui)
+    wait(1) 
+    ScreenGui = Player.PlayerGui:FindFirstChild("ChatLogGui")
+    setupGUIReferences()
+end
