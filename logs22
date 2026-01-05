@@ -1,95 +1,82 @@
--- Ultimate Chat Logs (75 Messages) - Works on New & Old Chat
+-- Logs Script: Auto-Show on Start | Press [L] to Toggle
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
-local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
 
--- إعدادات اللوقز
-local MAX_LOGS = 75
-local logsData = {}
+-- التأكد من عدم تكرار السكربت
+if CoreGui:FindFirstChild("MyChatLogs") then
+    CoreGui:FindFirstChild("MyChatLogs"):Destroy()
+end
 
--- إنشاء الواجهة
-local sg = Instance.new("ScreenGui", game.CoreGui)
+local sg = Instance.new("ScreenGui")
+sg.Name = "MyChatLogs"
+sg.Parent = CoreGui
+sg.ResetOnSpawn = false
+
 local mainFrame = Instance.new("Frame", sg)
-local scroll = Instance.new("ScrollingFrame", mainFrame)
-local layout = Instance.new("UIListLayout", scroll)
-local title = Instance.new("TextLabel", mainFrame)
-
 mainFrame.Size = UDim2.new(0, 350, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-mainFrame.BackgroundTransparency = 0.2
-mainFrame.Visible = false -- يبدأ مخفي، اضغط L للإظهار
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 2
+mainFrame.Visible = true -- سيظهر فوراً للتجربة
 mainFrame.Active = true
 mainFrame.Draggable = true
 
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "📝 LOGS [75] - Press L to Close"
-title.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 35)
+title.Text = "📜 CHAT LOGS [L to Hide]"
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.Parent = mainFrame
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
 
-scroll.Size = UDim2.new(1, -10, 1, -40)
-scroll.Position = UDim2.new(0, 5, 0, 35)
+local scroll = Instance.new("ScrollingFrame", mainFrame)
+scroll.Size = UDim2.new(1, -10, 1, -45)
+scroll.Position = UDim2.new(0, 5, 0, 40)
 scroll.BackgroundTransparency = 1
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarThickness = 4
+scroll.ScrollBarThickness = 5
 
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 3)
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 2)
 
--- وظيفة إضافة الرسالة
+local logsCount = 0
 local function addLog(name, msg, color)
-    local timeStr = os.date("%H:%M")
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 0, 20)
-    label.Text = string.format("[%s] %s: %s", timeStr, name, msg)
+    logsCount = logsCount + 1
+    local label = Instance.new("TextLabel", scroll)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = " [" .. os.date("%X") .. "] " .. name .. ": " .. msg
     label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 15
-    label.Parent = scroll
+    label.TextScaled = true
     
-    table.insert(logsData, label)
-    if #logsData > MAX_LOGS then
-        local old = table.remove(logsData, 1)
-        old:Destroy()
+    if logsCount > 75 then
+        scroll:GetChildren()[2]:Destroy() -- حذف أقدم رسالة (أول عنصر بعد الـ layout)
     end
+    
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
     scroll.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
 end
 
--- طريقة 1: مراقبة النظام الجديد (TextChatService)
-TextChatService.MessageReceived:Connect(function(textObject)
-    local sender = textObject.TextSource and textObject.TextSource.Name or "System"
-    addLog(sender, textObject.TextContent, Color3.fromRGB(200, 255, 200))
-end)
-
--- طريقة 2: مراقبة النظام القديم (Legacy Chat)
-for _, p in pairs(Players:GetPlayers()) do
-    p.Chatted:Connect(function(msg)
-        addLog(p.Name, msg, Color3.fromRGB(255, 255, 255))
-    end)
+-- مراقبة الشات بكل أنواعه
+local function connectPlayer(p)
+    p.Chatted:Connect(function(m) addLog(p.Name, m) end)
 end
-Players.PlayerAdded:Connect(function(p)
-    p.Chatted:Connect(function(msg)
-        addLog(p.Name, msg, Color3.fromRGB(255, 255, 255))
-    end)
+for _, p in pairs(Players:GetPlayers()) do connectPlayer(p) end
+Players.PlayerAdded:Connect(connectPlayer)
+
+TextChatService.MessageReceived:Connect(function(obj)
+    local sender = obj.TextSource and obj.TextSource.Name or "System"
+    addLog(sender, obj.TextContent, Color3.fromRGB(200, 255, 200))
 end)
 
--- زر L للفتح والإغلاق
+-- زر L للإخفاء والظهور
 UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.L then
+    if not gp and input.KeyCode == Enum.KeyCode.L then
         mainFrame.Visible = not mainFrame.Visible
     end
 end)
 
--- إشعار تأكيد التشغيل
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Logs Loaded!",
-    Text = "Press L to open the window",
-    Duration = 5
-})
+print("Logs Script Loaded Perfectly!")
