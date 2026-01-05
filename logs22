@@ -1,82 +1,73 @@
--- Logs Script: Auto-Show on Start | Press [L] to Toggle
+-- Simple Chat Logs (75 Max) - [L] to Toggle
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
-local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
--- التأكد من عدم تكرار السكربت
-if CoreGui:FindFirstChild("MyChatLogs") then
-    CoreGui:FindFirstChild("MyChatLogs"):Destroy()
-end
+-- إنشاء الواجهة في مكان مضمون
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("SimpleLogs") then playerGui.SimpleLogs:Destroy() end
 
-local sg = Instance.new("ScreenGui")
-sg.Name = "MyChatLogs"
-sg.Parent = CoreGui
+local sg = Instance.new("ScreenGui", playerGui)
+sg.Name = "SimpleLogs"
 sg.ResetOnSpawn = false
 
-local mainFrame = Instance.new("Frame", sg)
-mainFrame.Size = UDim2.new(0, 350, 0, 300)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-mainFrame.BorderSizePixel = 2
-mainFrame.Visible = true -- سيظهر فوراً للتجربة
-mainFrame.Active = true
-mainFrame.Draggable = true
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0, 300, 0, 250)
+main.Position = UDim2.new(0.5, -150, 0.5, -125)
+main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+main.BackgroundTransparency = 0.3
+main.Active = true
+main.Draggable = true
+main.Visible = true -- يظهر فوراً عند التشغيل
 
-local title = Instance.new("TextLabel", mainFrame)
-title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "📜 CHAT LOGS [L to Hide]"
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 20
-
-local scroll = Instance.new("ScrollingFrame", mainFrame)
-scroll.Size = UDim2.new(1, -10, 1, -45)
-scroll.Position = UDim2.new(0, 5, 0, 40)
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(1, -10, 1, -10)
+scroll.Position = UDim2.new(0, 5, 0, 5)
 scroll.BackgroundTransparency = 1
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarThickness = 5
+scroll.ScrollBarThickness = 4
 
 local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0, 2)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local logsCount = 0
-local function addLog(name, msg, color)
-    logsCount = logsCount + 1
-    local label = Instance.new("TextLabel", scroll)
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.Text = " [" .. os.date("%X") .. "] " .. name .. ": " .. msg
-    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    label.BackgroundTransparency = 1
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextScaled = true
+local logCount = 0
+local function addLog(name, msg)
+    logCount = logCount + 1
+    local txt = Instance.new("TextLabel", scroll)
+    txt.Size = UDim2.new(1, 0, 0, 20)
+    txt.BackgroundTransparency = 1
+    txt.Text = "[" .. name .. "]: " .. msg
+    txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextSize = 14
     
-    if logsCount > 75 then
-        scroll:GetChildren()[2]:Destroy() -- حذف أقدم رسالة (أول عنصر بعد الـ layout)
+    if logCount > 75 then
+        scroll:GetChildren()[2]:Destroy()
     end
-    
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
     scroll.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
 end
 
--- مراقبة الشات بكل أنواعه
-local function connectPlayer(p)
+-- مراقبة الرسائل
+TextChatService.MessageReceived:Connect(function(obj)
+    addLog(obj.TextSource and obj.TextSource.Name or "System", obj.TextContent)
+end)
+
+for _, p in pairs(Players:GetPlayers()) do
     p.Chatted:Connect(function(m) addLog(p.Name, m) end)
 end
-for _, p in pairs(Players:GetPlayers()) do connectPlayer(p) end
-Players.PlayerAdded:Connect(connectPlayer)
-
-TextChatService.MessageReceived:Connect(function(obj)
-    local sender = obj.TextSource and obj.TextSource.Name or "System"
-    addLog(sender, obj.TextContent, Color3.fromRGB(200, 255, 200))
+Players.PlayerAdded:Connect(function(p)
+    p.Chatted:Connect(function(m) addLog(p.Name, m) end)
 end)
 
 -- زر L للإخفاء والظهور
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Enum.KeyCode.L then
-        mainFrame.Visible = not mainFrame.Visible
+        main.Visible = not main.Visible
     end
 end)
 
-print("Logs Script Loaded Perfectly!")
+-- رسالة للتأكيد في الشات (تراها أنت فقط)
+print("LOGS LOADED! Press L to hide.")
+Script Loaded Perfectly!")
