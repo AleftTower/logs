@@ -1,105 +1,104 @@
--- =================================================================
--- |              سكربت سجل الدردشة (Log Chat Script)             |
--- |         يجب وضع هذا السكربت في StarterPlayerScripts          |
--- =================================================================
-
--- الخدمات الأساسية
+-- Advanced Chat Logs Script (Max 75 Messages)
 local Players = game:GetService("Players")
-local ChatService = game:GetService("Chat")
 local UserInputService = game:GetService("UserInputService")
-local Player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
--- إعدادات السجل
-local ChatLog = {}
-local MaxMessages = 75 --  الحد الأقصى للرسائل المخزنة (تم التعديل إلى 75) 
+-- إعدادات اللوقز
+local MAX_LOGS = 75
+local logsData = {}
 
--- متغيرات واجهة المستخدم (GUI)
-local ScreenGui = Player.PlayerGui:FindFirstChild("ChatLogGui") -- تأكد من أن هذا هو اسم الـ ScreenGui الخاص بك
-local LogFrame = nil
-local LogTextBox = nil
+-- إنشاء الواجهة (GUI)
+local sg = Instance.new("ScreenGui", game.CoreGui)
+local mainFrame = Instance.new("Frame", sg)
+local scroll = Instance.new("ScrollingFrame", mainFrame)
+local layout = Instance.new("UIListLayout", scroll)
+local title = Instance.new("TextLabel", mainFrame)
 
--- البحث عن عناصر واجهة المستخدم بمجرد تحميل واجهة المستخدم
-local function setupGUIReferences()
-    if ScreenGui and ScreenGui:FindFirstChild("LogFrame") then
-        LogFrame = ScreenGui:FindFirstChild("LogFrame")
-        LogTextBox = LogFrame:FindFirstChild("LogTextBox")
-        
-        -- إخفاء القائمة في البداية
-        if LogFrame then
-            LogFrame.Visible = false
-        end
-    end
-end
+mainFrame.Name = "LogsFrame"
+mainFrame.Size = UDim2.new(0, 350, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.Visible = false -- يبدأ مخفي
+mainFrame.Active = true
+mainFrame.Draggable = true
 
--- =================================================================
--- |                    دوال معالجة السجل                         |
--- =================================================================
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "💬 Chat Logs (75 Max) - [L] to Hide"
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
 
--- دالة تحديث محتوى مربع النص
-local function UpdateLogUI()
-    if LogTextBox and LogFrame.Visible then
-        local displayString = table.concat(ChatLog, "\n")
-        LogTextBox.Text = displayString
-    end
-end
+scroll.Size = UDim2.new(1, -10, 1, -40)
+scroll.Position = UDim2.new(0, 5, 0, 35)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 6
 
--- دالة لمعالجة الرسائل
-local function OnMessageReceived(message, speaker)
-    local senderPlayer = Players:GetPlayerByUserId(speaker.UserId)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 5)
+
+-- وظيفة لإضافة رسالة للوقز
+local function addLog(sender, message, isPrivate)
+    local timeStr = os.date("%H:%M:%S")
+    local typeStr = isPrivate and "[PRIVATE]" or "[PUBLIC]"
+    local fullText = string.format("[%s] %s %s: %s", timeStr, typeStr, sender, message)
     
-    if senderPlayer then
-        -- تنسيق الرسالة
-        local logEntry = string.format("[%s] %s: %s", os.date("%H:%M:%S"), senderPlayer.Name, message)
-        
-        -- إضافة الرسالة إلى أعلى السجل
-        table.insert(ChatLog, 1, logEntry)
-        
-        -- إزالة أقدم رسالة إذا تجاوزنا الحد الأقصى (75)
-        if #ChatLog > MaxMessages then
-            table.remove(ChatLog, #ChatLog)
-        end
-        
-        -- تحديث واجهة المستخدم إذا كانت ظاهرة
-        UpdateLogUI()
+    -- إنشاء عنصر النص في القائمة
+    local logLabel = Instance.new("TextLabel")
+    logLabel.Size = UDim2.new(1, -10, 0, 25)
+    logLabel.Text = fullText
+    logLabel.BackgroundTransparency = 1
+    logLabel.TextColor3 = isPrivate and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(220, 220, 220)
+    logLabel.TextXAlignment = Enum.TextXAlignment.Left
+    logLabel.Font = Enum.Font.SourceSans
+    logLabel.TextSize = 16
+    logLabel.Parent = scroll
+    
+    table.insert(logsData, logLabel)
+    
+    -- مسح الرسائل القديمة إذا تجاوزت 75
+    if #logsData > MAX_LOGS then
+        local oldLog = table.remove(logsData, 1)
+        oldLog:Destroy()
     end
+    
+    -- تحديث حجم السكرول
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    scroll.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
 end
 
--- ربط الدالة بحدث إرسال الرسائل (للدردشة العامة)
-ChatService.ChanneledMessage:Connect(function(channel, message, speaker)
-    -- يمكنك هنا إضافة منطق لتصفية القنوات (القناة العامة هي عادةً "All")
-    OnMessageReceived(message, speaker)
+-- مراقبة اللاعبين (الرسائل العامة)
+local function trackPlayer(player)
+    player.Chatted:Connect(function(msg)
+        addLog(player.Name, msg, false)
+    end)
+end
+
+for _, p in pairs(Players:GetPlayers()) do trackPlayer(p) end
+Players.PlayerAdded:Connect(trackPlayer)
+
+-- مراقبة الرسائل الخاصة (تعتمد على نظام الشات)
+-- ملاحظة: بعض الألعاب تشفر الخاص، لكن هذا الكود يحاول التقاطها
+game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.OnMessageDoneFiltering.OnClientEvent:Connect(function(messageData)
+    if messageData.FromSpeaker ~= LocalPlayer.Name then
+        -- إذا كانت الرسالة موجهة لك فقط أو خاصة
+        if messageData.MessageType == "Whisper" then
+             addLog(messageData.FromSpeaker, messageData.Message, true)
+        end
+    end
 end)
 
--- يمكنك إضافة ربط لـ PrivateMessage إذا كنت تملك صلاحية الوصول إليه (قد يتطلب هذا سكربت خادم)
--- PrivateMessage:Connect(function(message, sender, recipient) ... end)
-
--- =================================================================
--- |                    تفعيل زر L والتحكم بـ GUI                 |
--- =================================================================
-
--- ربط الإدخال لتفعيل وإخفاء القائمة
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    -- نتجاهل الإدخال إذا كان اللاعب يكتب حاليًا (لتجنب فتح القائمة أثناء الكتابة)
-    if gameProcessedEvent then return end
-    
-    if input.KeyCode == Enum.KeyCode.L and LogFrame then
-        LogFrame.Visible = not LogFrame.Visible -- تبديل حالة الظهور
-        
-        -- إذا أصبحت القائمة ظاهرة، قم بتحديث المحتوى فوراً
-        if LogFrame.Visible then
-            UpdateLogUI()
-        end
+-- زر L للإظهار والإخفاء
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.L then
+        mainFrame.Visible = not mainFrame.Visible
     end
 end)
 
--- انتظر تحميل واجهة المستخدم ثم قم بتعيين المراجع
-if ScreenGui then
-    -- يتم استدعاء هذا عند تغيير ملكية الأب (مثل عند تحميل الـ ScreenGui)
-    ScreenGui.Parent:OnceChanged("Parent", setupGUIReferences)
-else
-    -- في حالة عدم وجود ScreenGui، حاول البحث مرة أخرى بعد قليل
-    -- (يجب أن تقوم بإنشاء ScreenGui يدوياً وتسميته ChatLogGui)
-    wait(1) 
-    ScreenGui = Player.PlayerGui:FindFirstChild("ChatLogGui")
-    setupGUIReferences()
-end
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Logs Active ✅",
+    Text = "Press [L] to open Chat Logs",
+    Duration = 5
+})
