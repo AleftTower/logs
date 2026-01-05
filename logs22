@@ -87,4 +87,3 @@ StarterGui:SetCore("SendNotification", {
 })
 
 print("CHAT LOGS LOADED!")
-
