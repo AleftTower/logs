@@ -1,10 +1,11 @@
--- Simple Chat Logs (75 Max) - [L] to Toggle
+-- Simple Chat Logs [75 Max] - Press [L] to Hide
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
+local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- إنشاء الواجهة في مكان مضمون
+-- إنشاء واجهة بسيطة في الـ PlayerGui لضمان الظهور
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("SimpleLogs") then playerGui.SimpleLogs:Destroy() end
 
@@ -13,17 +14,25 @@ sg.Name = "SimpleLogs"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 300, 0, 250)
-main.Position = UDim2.new(0.5, -150, 0.5, -125)
-main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-main.BackgroundTransparency = 0.3
+main.Size = UDim2.new(0, 320, 0, 250)
+main.Position = UDim2.new(0.5, -160, 0.4, -125)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+main.BackgroundTransparency = 0.2
 main.Active = true
 main.Draggable = true
-main.Visible = true -- يظهر فوراً عند التشغيل
+main.Visible = true -- يظهر تلقائياً عند التشغيل
+
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 25)
+title.Text = " LOGS [L to Toggle]"
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 14
+title.Font = Enum.Font.SourceSansBold
 
 local scroll = Instance.new("ScrollingFrame", main)
-scroll.Size = UDim2.new(1, -10, 1, -10)
-scroll.Position = UDim2.new(0, 5, 0, 5)
+scroll.Size = UDim2.new(1, -10, 1, -35)
+scroll.Position = UDim2.new(0, 5, 0, 30)
 scroll.BackgroundTransparency = 1
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.ScrollBarThickness = 4
@@ -37,19 +46,21 @@ local function addLog(name, msg)
     local txt = Instance.new("TextLabel", scroll)
     txt.Size = UDim2.new(1, 0, 0, 20)
     txt.BackgroundTransparency = 1
-    txt.Text = "[" .. name .. "]: " .. msg
+    txt.Text = " [" .. os.date("%X") .. "] " .. name .. ": " .. msg
     txt.TextColor3 = Color3.fromRGB(255, 255, 255)
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.TextSize = 14
+    txt.Font = Enum.Font.SourceSans
     
     if logCount > 75 then
-        scroll:GetChildren()[2]:Destroy()
+        local first = scroll:FindFirstChildOfClass("TextLabel")
+        if first then first:Destroy() end
     end
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
     scroll.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
 end
 
--- مراقبة الرسائل
+-- التقاط الرسائل من كل الأنظمة
 TextChatService.MessageReceived:Connect(function(obj)
     addLog(obj.TextSource and obj.TextSource.Name or "System", obj.TextContent)
 end)
@@ -68,6 +79,12 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- رسالة للتأكيد في الشات (تراها أنت فقط)
-print("LOGS LOADED! Press L to hide.")
-Script Loaded Perfectly!")
+-- رسالة التنبيه في أسفل الشاشة (Notification)
+StarterGui:SetCore("SendNotification", {
+    Title = "Logs Active ✅",
+    Text = "السكربت اشتغل! اضغط L للإخفاء",
+    Duration = 5
+})
+
+print("CHAT LOGS LOADED!")
+
